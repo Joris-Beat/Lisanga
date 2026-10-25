@@ -1,0 +1,118 @@
+rules_version = '2';
+// Lisanga — Règles de sécurité Firestore (à coller dans Firebase > Firestore > Règles).
+// Principe : on ne lit et n'écrit que ce qui nous concerne. Le contenu des discussions est de toute façon chiffré.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function me() { return request.auth.uid; }
+    function onlyChanges(keys) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys); }
+    function small(max) { return request.resource.size() < max; }
+
+    // ---------- Profils (annuaire) ----------
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow create: if signedIn() && me() == uid && request.resource.data.publicKey is map;
+      allow update: if signedIn() && me() == uid;
+      allow delete: if false;
+      match /sessions/{device} {
+        allow read, write: if signedIn() && me() == uid;
+      }
+    }
+
+    // Sauvegarde chiffrée de la clé privée et préférences privées : propriétaire uniquement
+    match /keys/{uid}    { allow read, write: if signedIn() && me() == uid; }
+    match /private/{uid} { allow read, write: if signedIn() && me() == uid; }
+
+    // ---------- Abonnements ----------
+    match /follows/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.from == me() && id == me() + '_' + request.resource.data.to
+        && (request.resource.data.status == 'pending'
+            || !get(/databases/$(database)/documents/users/$(request.resource.data.to)).data.get('privacy', {}).get('private', false));
+      // Seule la personne suivie peut accepter une demande
+      allow update: if signedIn() && resource.data.to == me() && onlyChanges(['status']) && request.resource.data.status == 'ok';
+      allow delete: if signedIn() && (resource.data.from == me() || resource.data.to == me());
+    }
+
+    // ---------- Discussions ----------
+    function isMember(chatId) {
+      return me() in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
+    }
+    match /chats/{chatId} {
+      allow read: if signedIn() && (resource == null || me() in resource.data.members);
+      allow create: if signedIn() && me() in request.resource.data.members && request.resource.data.createdBy == me();
+      // Les membres mettent à jour aperçu, compteurs, lus, « écrit… » ; seuls les admins gèrent le groupe ;
+      // un membre peut se retirer lui-même.
+      allow update: if signedIn() && me() in resource.data.members && (
+        onlyChanges(['last', 'lastAt', 'unread', 'reads', 'typing', 'ephemeral'])
+        || (resource.data.type == 'group' && me() in resource.data.get('admins', []))
+        || (resource.data.type == 'group' && request.resource.data.members.toSet() == resource.data.members.toSet().difference([me()].toSet())
+            && onlyChanges(['members', 'admins', 'keys']))
+      );
+      allow delete: if false;
+
+      match /messages/{msgId} {
+        allow read: if signedIn() && isMember(chatId);
+        allow create: if signedIn() && isMember(chatId) && request.resource.data.from == me() && small(20000);
+        // L'auteur modifie / supprime pour tous ; les membres ne touchent qu'aux réactions
+        allow update: if signedIn() && isMember(chatId) && (resource.data.from == me() || onlyChanges(['reactions']));
+        allow delete: if signedIn() && resource.data.from == me();
+      }
+    }
+
+    // ---------- Médias (chiffrés pour les discussions) ----------
+    match /media/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.owner == me();
+      allow delete: if signedIn() && resource.data.owner == me();
+      match /c/{part} {
+        allow read: if signedIn();
+        // Les morceaux sont écrits avant la fiche : on vérifie le propriétaire quand la fiche existe
+        allow create: if signedIn() && small(1048000) && (!exists(/databases/$(database)/documents/media/$(id))
+                        || get(/databases/$(database)/documents/media/$(id)).data.owner == me());
+        allow delete: if signedIn() && get(/databases/$(database)/documents/media/$(id)).data.owner == me();
+      }
+    }
+
+    // ---------- Stories (24 h) ----------
+    match /stories/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.uid == me();
+      allow update: if signedIn() && (resource.data.uid == me() || onlyChanges(['views', 'likes']));
+      allow delete: if signedIn() && resource.data.uid == me();
+    }
+
+    // ---------- Publications Star, Fun, Publique ----------
+    match /{col}/{postId} {
+      allow read: if signedIn() && col in ['posts_pub', 'posts_star', 'posts_fun'];
+      allow create: if signedIn() && col in ['posts_pub', 'posts_star', 'posts_fun'] && request.resource.data.uid == me() && small(20000);
+      allow update: if signedIn() && col in ['posts_pub', 'posts_star', 'posts_fun']
+        && (resource.data.uid == me() || onlyChanges(['likes', 'comments', 'shares', 'views']));
+      allow delete: if signedIn() && col in ['posts_pub', 'posts_star', 'posts_fun'] && resource.data.uid == me();
+
+      match /comments/{cid} {
+        allow read: if signedIn();
+        allow create: if signedIn() && request.resource.data.uid == me() && small(5000);
+        allow delete: if signedIn() && (resource.data.uid == me() || get(/databases/$(database)/documents/$(col)/$(postId)).data.uid == me());
+      }
+    }
+
+    // ---------- Appels (signalisation WebRTC) ----------
+    match /calls/{id} {
+      allow read: if signedIn() && (resource == null || resource.data.from == me() || resource.data.to == me());
+      allow create: if signedIn() && request.resource.data.from == me();
+      allow update: if signedIn() && (resource.data.from == me() || resource.data.to == me());
+      match /ice/{c} {
+        allow read: if signedIn() && (get(/databases/$(database)/documents/calls/$(id)).data.from == me() || get(/databases/$(database)/documents/calls/$(id)).data.to == me());
+        allow create: if signedIn() && request.resource.data.from == me();
+      }
+    }
+
+    // ---------- Signalements (lecture réservée à la console Firebase) ----------
+    match /reports/{id} {
+      allow create: if signedIn() && request.resource.data.by == me();
+      allow read, update, delete: if false;
+    }
+  }
+}

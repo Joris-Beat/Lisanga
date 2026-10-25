@@ -1,0 +1,17 @@
+{
+  "name": "lisanga-ia",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Serveur IA de Lisanga (Cloudflare Worker) : relaie les demandes de l'application vers Claude d'Anthropic sans exposer la clé API.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.3.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.152.0"
+  }
+}

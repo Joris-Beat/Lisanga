@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
+<title>Lisanga</title>
+<meta name="description" content="Lisanga : messagerie chiffrée, appels, stories, vidéos courtes, fil d'actualité et assistant IA.">
+<meta name="theme-color" content="#100E1A">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="img/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="img/icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<svg id="lsg-defs" width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="lsg-a" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFC15E"/><stop offset="1" stop-color="#FF6B57"/></linearGradient><linearGradient id="lsg-b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2EC4B6"/><stop offset="1" stop-color="#7C5CFF"/></linearGradient></defs></svg>
+<div id="app"><div class="boot">Chargement…</div></div>
+<div id="call-root" hidden></div>
+<div id="modal-root"></div>
+<div id="toast-root" aria-live="polite"></div>
+
+<!-- 1. Vos réglages (Firebase, serveur IA, serveurs d'appel) -->
+<script src="config.js"></script>
+<!-- 2. Firebase n'est chargé que si config.js le demande -->
+<script>
+if((window.LISANGA_CONFIG||{}).firebase&&window.LISANGA_CONFIG.firebase.apiKey){
+  ['app','auth','firestore'].forEach(function(m){document.write('<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-'+m+'-compat.js"><\/script>')});
+}
+</script>
+<!-- 3. Le moteur de l'application : l'ordre est important -->
+<script src="js/core/utils.js"></script>
+<script src="js/core/brand.js"></script>
+<script src="js/core/db.js"></script>
+<script src="js/core/crypto.js"></script>
+<script src="js/core/media.js"></script>
+<script src="js/core/auth.js"></script>
+<script src="js/core/social.js"></script>
+<script src="js/core/calls.js"></script>
+<script src="js/core/app.js"></script>
+<script src="js/core/demo.js"></script>
+<!-- 4. Les onglets -->
+<script src="js/tabs/chat.js"></script>
+<script src="js/tabs/star.js"></script>
+<script src="js/tabs/fun.js"></script>
+<script src="js/tabs/publique.js"></script>
+<script src="js/tabs/ia.js"></script>
+<script src="js/tabs/profile.js"></script>
+<script>App.boot();</script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "Lisanga",
+  "short_name": "Lisanga",
+  "description": "Messagerie chiffrée, appels, stories, vidéos courtes, fil d'actualité et IA.",
+  "lang": "fr",
+  "start_url": "./#chat",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#100E1A",
+  "theme_color": "#100E1A",
+  "icons": [
+    { "src": "img/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "img/icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

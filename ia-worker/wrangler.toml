@@ -1,0 +1,12 @@
+name = "lisanga-ia"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+# Adresse(s) de votre site Lisanga, séparées par des virgules. Seules elles peuvent utiliser ce serveur.
+ALLOWED_ORIGINS = "https://votre-site.netlify.app,http://localhost:8787"
+# Modèle Claude utilisé par l'assistant
+MODEL = "claude-opus-5-5"
+
+# La clé API ne se met JAMAIS ici. Commande : npx wrangler secret put ANTHROPIC_API_KEY
